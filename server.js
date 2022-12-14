@@ -5,6 +5,7 @@ const express = require("express");
 const { getAncientWisdom } = require("./bookOfAncientWisdom");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
+const checkIsAuthenticated = require("../auth-express/middleware/index.js")
 
 const cors = require("cors");
 
@@ -22,27 +23,28 @@ app.get("/", (req, res) => {
 
 //TODO: Your task will be to secure this route to prevent access by those who are not, at least, logged in.
 app.get("/wisdom", async (req, res) => {
-  try {
-  const idToken = req.headers.authorization.slice(7);
-  await getAuth()
-  .verifyIdToken(idToken)
-  .then((decodedToken => {
-    const uid = decodedToken.uid;
-    res.json("VERIFIED TOKEN for user: ", uid)
-  }))
-} catch(err) {
-  console.error(err)
-}
-  //Eventual plan:
-  //1. authHeader = get the value of the Authorization header
-  //2. potentialToken = strip the "Bearer " prefix from authHeader
-  //3. if (potentialToken is verified legit)
-  //4.     return protected info in response
-  //5. else
-  //       say access denied in response
-  res.send("🤐: " + getAncientWisdom() + "🤫");
-});
+  const authenticationResult = await checkIsAuthenticated(req, res)
+  
+  if(authenticationResult.authenticated) {
+    try {
+      res.send("🤐: " + getAncientWisdom() + "🤫");
+    } catch (err) {
+    res.status(401).send({ message: "Internal Error"})
+    }
+  } else {
+    res.status(401).send({ message: authenticationResult.message})
+  }
+})
+
 
 app.listen(port, () => {
   console.log(`Listening on port ${port}`);
 });
+
+//Eventual plan:
+//1. authHeader = get the value of the Authorization header
+//2. potentialToken = strip the "Bearer " prefix from authHeader
+//3. if (potentialToken is verified legit)
+//4.     return protected info in response
+//5. else
+//       say access denied in response
