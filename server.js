@@ -1,10 +1,17 @@
+process.env.GOOGLE_APPLICATION_CREDENTIALS =
+"secrets/firebase-service-account-secrets.json";
+
 const express = require("express");
 const { getAncientWisdom } = require("./bookOfAncientWisdom");
+const { initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
 
 const cors = require("cors");
 
 const app = express();
 app.use(cors());
+
+initializeApp();
 
 const port = process.env.PORT || 4000;
 
@@ -14,7 +21,18 @@ app.get("/", (req, res) => {
 });
 
 //TODO: Your task will be to secure this route to prevent access by those who are not, at least, logged in.
-app.get("/wisdom", (req, res) => {
+app.get("/wisdom", async (req, res) => {
+  try {
+  const idToken = req.headers.authorization.slice(7);
+  await getAuth()
+  .verifyIdToken(idToken)
+  .then((decodedToken => {
+    const uid = decodedToken.uid;
+    res.json("VERIFIED TOKEN for user: ", uid)
+  }))
+} catch(err) {
+  console.error(err)
+}
   //Eventual plan:
   //1. authHeader = get the value of the Authorization header
   //2. potentialToken = strip the "Bearer " prefix from authHeader
